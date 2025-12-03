@@ -77,6 +77,16 @@ export const APP_CONFIG = Object.freeze({
 });
 
 /**
+ * Konfigurasi TCP Forwarder untuk OpenCPN/Telnet
+ * @type {Object}
+ */
+export const FORWARDER_CONFIG = Object.freeze({
+  enabled: process.env.FORWARDER_ENABLED === 'true',
+  host: process.env.FORWARDER_HOST || '0.0.0.0',
+  port: parseInt(process.env.FORWARDER_PORT) || 10111
+});
+
+/**
  * Mendapatkan konfigurasi source berdasarkan mode koneksi
  * @returns {Object} Objek dengan source dan sourcePort
  */
@@ -108,5 +118,6 @@ export default {
   UDP_CONFIG,
   WEBSOCKET_CONFIG,
   APP_CONFIG,
+  FORWARDER_CONFIG,
   getSourceConfig
 };

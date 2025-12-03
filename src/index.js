@@ -16,9 +16,10 @@ import {
   TCP_CONFIG, 
   UDP_CONFIG, 
   WEBSOCKET_CONFIG,
-  APP_CONFIG 
+  APP_CONFIG,
+  FORWARDER_CONFIG 
 } from './config.js';
-import { createConnection, WebSocketConnection } from './connections/index.js';
+import { createConnection, WebSocketConnection, TCPForwarder } from './connections/index.js';
 import { DataBuffer, AISProcessor } from './core/index.js';
 import { getMacAddress } from './utils/helpers.js';
 import logger from './utils/logger.js';
@@ -34,6 +35,7 @@ class AISDataForwarder {
     this.dataBuffer = null;
     this.aisProcessor = null;
     this.statsInterval = null;
+    this.tcpForwarder = null;
   }
 
   /**
@@ -61,7 +63,15 @@ class AISDataForwarder {
     }
 
     console.log(`WebSocket Server: ${WEBSOCKET_CONFIG.server}`);
-    console.log(`Mode: Pengiriman segera saat data diterima (debounce: ${APP_CONFIG.debounceDelay}ms)\n`);
+    console.log(`Mode: Pengiriman segera saat data diterima (debounce: ${APP_CONFIG.debounceDelay}ms)`);
+    
+    // TCP Forwarder info
+    if (FORWARDER_CONFIG.enabled) {
+      console.log(`TCP Forwarder: ${FORWARDER_CONFIG.host}:${FORWARDER_CONFIG.port} (OpenCPN/Telnet)`);
+    } else {
+      console.log(`TCP Forwarder: DISABLED`);
+    }
+    console.log('');
   }
 
   /**
@@ -190,6 +200,11 @@ class AISDataForwarder {
       this.dataBuffer.clear();
     }
 
+    // Stop TCP Forwarder
+    if (this.tcpForwarder) {
+      this.tcpForwarder.stop();
+    }
+
     console.log('Terima kasih!\n');
     process.exit(0);
   }
@@ -208,9 +223,13 @@ class AISDataForwarder {
       // Setup WebSocket connection
       this._setupWebSocket();
 
+      // Setup TCP Forwarder untuk OpenCPN
+      this.tcpForwarder = new TCPForwarder(FORWARDER_CONFIG);
+      await this.tcpForwarder.start();
+
       // Setup data buffer dan AIS processor
       this.dataBuffer = new DataBuffer(this.wsConnection, this.macAddress);
-      this.aisProcessor = new AISProcessor(this.dataBuffer);
+      this.aisProcessor = new AISProcessor(this.dataBuffer, this.tcpForwarder);
 
       // Setup AIS connection
       this._setupAISConnection();

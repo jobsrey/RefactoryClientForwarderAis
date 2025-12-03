@@ -7,6 +7,7 @@ Aplikasi Node.js untuk menerima data AIS (Automatic Identification System) dari 
 - **Multi-source Support**: Mendukung koneksi via Serial Port (USB), TCP/IP, dan UDP
 - **Real-time Processing**: Memproses dan decode data AIS secara real-time
 - **WebSocket Integration**: Meneruskan data ke WebSocket Server untuk distribusi ke client
+- **TCP Forwarder**: Forward data AIS ke OpenCPN atau aplikasi navigasi lain via TCP/Telnet
 - **Auto-reconnect**: Otomatis reconnect jika koneksi terputus
 - **Debouncing**: Mengurangi overhead dengan menggabungkan pengiriman data
 - **Statistics**: Menampilkan statistik real-time setiap 30 detik
@@ -25,7 +26,8 @@ ws_client_new/
 │   │   ├── serial-connection.js     # Koneksi Serial Port
 │   │   ├── tcp-connection.js        # Koneksi TCP/IP
 │   │   ├── udp-connection.js        # Koneksi UDP
-│   │   └── websocket-connection.js  # Koneksi WebSocket
+│   │   ├── websocket-connection.js  # Koneksi WebSocket
+│   │   └── tcp-forwarder.js         # TCP Forwarder untuk OpenCPN
 │   ├── core/
 │   │   ├── index.js                 # Export semua core modules
 │   │   ├── ais-processor.js         # Processor data AIS
@@ -110,6 +112,19 @@ UDP_LISTEN_PORT=10110
 ```env
 WEBSOCKET_SERVER=ws://localhost:8081
 DEBOUNCE_DELAY=100
+```
+
+### Konfigurasi TCP Forwarder (OpenCPN/Telnet)
+
+```env
+# Aktifkan TCP Forwarder (true/false)
+FORWARDER_ENABLED=true
+
+# IP untuk listen (0.0.0.0 = semua interface)
+FORWARDER_HOST=0.0.0.0
+
+# Port untuk koneksi dari OpenCPN
+FORWARDER_PORT=10111
 ```
 
 ### Konfigurasi Identifikasi
@@ -219,6 +234,137 @@ UDP_LISTEN_PORT=10110
 1. Pastikan tidak ada aplikasi lain yang menggunakan port UDP
 2. Set `UDP_LISTEN_PORT` ke port yang dikonfigurasi di AIS receiver
 
+## TCP Forwarder untuk OpenCPN
+
+Fitur TCP Forwarder memungkinkan data AIS NMEA diteruskan ke OpenCPN atau aplikasi navigasi lain yang mendukung input NMEA via TCP.
+
+### Cara Kerja
+
+```
+┌─────────────┐     ┌──────────────────────┐     ┌──────────────┐
+│  R400NG     │────▶│  AIS Data Forwarder  │────▶│   OpenCPN    │
+│  (Serial)   │     │  TCP Server :10111   │     │  (TCP Client)│
+└─────────────┘     └──────────────────────┘     └──────────────┘
+                              │
+                              ▼
+                    ┌──────────────────┐
+                    │  WebSocket Server│
+                    └──────────────────┘
+```
+
+### Konfigurasi TCP Forwarder
+
+Edit file `.env`:
+
+```env
+# Aktifkan forwarder
+FORWARDER_ENABLED=true
+
+# IP untuk listen
+# 0.0.0.0 = accept dari semua IP (termasuk jaringan lokal)
+# 127.0.0.1 = hanya localhost
+FORWARDER_HOST=0.0.0.0
+
+# Port untuk listen (pilih port yang tidak digunakan)
+FORWARDER_PORT=10111
+```
+
+### Konfigurasi OpenCPN
+
+1. **Buka OpenCPN**
+2. Pergi ke **Options** (ikon kunci pas) → **Connections**
+3. Klik **Add Connection**
+4. Pilih **Network**
+5. Isi konfigurasi berikut:
+
+   | Setting | Nilai |
+   |---------|-------|
+   | Protocol | TCP |
+   | Address | `localhost` atau IP komputer yang menjalankan AIS Forwarder |
+   | DataPort | `10111` (sesuai `FORWARDER_PORT`) |
+   | Input filtering | None |
+
+6. Klik **Apply** kemudian **OK**
+
+### Menggunakan Telnet untuk Test
+
+Anda juga bisa test koneksi menggunakan telnet:
+
+```bash
+# Windows (aktifkan Telnet Client dulu di Windows Features)
+telnet localhost 10111
+
+# Linux/Mac
+telnet localhost 10111
+# atau
+nc localhost 10111
+```
+
+Jika berhasil, Anda akan melihat data NMEA AIS streaming:
+
+```
+# AIS Data Forwarder - R400NG
+# Connected at 2024-01-15T14:30:27.789Z
+# Waiting for AIS data...
+!AIVDM,1,1,,A,13u><=0P00PlSj0Psm0000000000,0*5B
+!AIVDM,1,1,,B,15MsK4PP00P?1i`N4I3QU?vN0<0V,0*52
+```
+
+### Commands via Telnet
+
+Ketik command berikut saat terhubung via telnet:
+
+| Command | Fungsi |
+|---------|--------|
+| `stats` | Menampilkan statistik messages sent dan connected clients |
+| `help` | Menampilkan daftar commands |
+
+### Contoh Output Aplikasi dengan TCP Forwarder
+
+```
+=== AIS Data Forwarder ===
+Connection Mode: SERIAL
+Serial Port: COM3
+Baud Rate: 38400
+WebSocket Server: ws://socket-ais.jasalog.com:8081
+Mode: Pengiriman segera saat data diterima (debounce: 100ms)
+TCP Forwarder: 0.0.0.0:10111 (OpenCPN/Telnet)
+
+======================================================================
+📡 TCP FORWARDER SERVER - FOR OPENCPN / TELNET
+======================================================================
+Status        : ENABLED
+Listen IP     : 0.0.0.0
+Listen Port   : 10111
+Connect URL   : telnet://localhost:10111
+======================================================================
+
+📡 [TCP Forwarder] Client connected: 127.0.0.1:54321 (Total: 1)
+```
+
+### Troubleshooting TCP Forwarder
+
+#### Port sudah digunakan
+
+```
+❌ TCP Forwarder Error: Port 10111 sudah digunakan
+```
+
+**Solusi**: Ganti `FORWARDER_PORT` ke port lain yang tidak digunakan.
+
+#### OpenCPN tidak bisa connect
+
+1. Pastikan `FORWARDER_ENABLED=true`
+2. Pastikan firewall tidak memblokir port
+3. Jika berbeda komputer, pastikan `FORWARDER_HOST=0.0.0.0`
+4. Cek IP address yang benar di OpenCPN
+
+#### Data tidak muncul di OpenCPN
+
+1. Pastikan aplikasi AIS Data Forwarder sudah berjalan
+2. Pastikan ada data AIS yang masuk dari R400NG
+3. Cek apakah koneksi TCP aktif di log aplikasi
+
 ## Tipe Pesan AIS yang Didukung
 
 | Type | Deskripsi |
@@ -305,6 +451,7 @@ Arsitektur modular memudahkan penambahan fitur:
 - **Logger baru**: Edit `src/utils/logger.js`
 - **Statistik tambahan**: Edit `src/utils/helpers.js` class `Statistics`
 - **Processing AIS tambahan**: Edit `src/core/ais-processor.js`
+- **TCP Forwarder**: Edit `src/connections/tcp-forwarder.js`
 
 ## License
 

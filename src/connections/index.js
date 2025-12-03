@@ -8,6 +8,7 @@ export { SerialConnection } from './serial-connection.js';
 export { TCPConnection } from './tcp-connection.js';
 export { UDPConnection } from './udp-connection.js';
 export { WebSocketConnection } from './websocket-connection.js';
+export { TCPForwarder } from './tcp-forwarder.js';
 
 import { CONNECTION_MODES } from '../config.js';
 import { SerialConnection } from './serial-connection.js';
