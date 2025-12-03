@@ -453,6 +453,185 @@ Arsitektur modular memudahkan penambahan fitur:
 - **Processing AIS tambahan**: Edit `src/core/ais-processor.js`
 - **TCP Forwarder**: Edit `src/connections/tcp-forwarder.js`
 
+## Docker Deployment
+
+Aplikasi ini mendukung deployment menggunakan Docker untuk kemudahan instalasi di komputer client.
+
+### File Docker
+
+| File | Deskripsi |
+|------|-----------|
+| `Dockerfile` | Multi-stage build untuk image yang optimal |
+| `docker-compose.yml` | Konfigurasi untuk deployment mudah |
+| `.dockerignore` | File yang tidak di-include dalam image |
+| `.env.docker` | Template environment untuk Docker |
+
+### Quick Start dengan Docker
+
+#### 1. Build Image
+
+```bash
+# Build image
+docker build -t ais-data-forwarder:latest .
+
+# Atau menggunakan docker-compose
+docker-compose build
+```
+
+#### 2. Jalankan Container
+
+**Mode TCP (paling umum untuk Docker):**
+
+```bash
+docker run -d \
+  --name ais-forwarder \
+  --restart unless-stopped \
+  -p 10111:10111 \
+  -e CONNECTION_MODE=tcp \
+  -e TCP_HOST=192.168.1.100 \
+  -e TCP_PORT=10110 \
+  -e WEBSOCKET_SERVER=ws://socket-ais.jasalog.com:8081 \
+  -e APP_KEY=your_app_key \
+  -e USER_KEY=your_user_key \
+  ais-data-forwarder:latest
+```
+
+**Mode UDP:**
+
+```bash
+docker run -d \
+  --name ais-forwarder \
+  --restart unless-stopped \
+  -p 10111:10111 \
+  -p 10110:10110/udp \
+  -e CONNECTION_MODE=udp \
+  -e UDP_HOST=192.168.1.100 \
+  -e UDP_PORT=10110 \
+  -e UDP_LISTEN_PORT=10110 \
+  -e WEBSOCKET_SERVER=ws://socket-ais.jasalog.com:8081 \
+  -e APP_KEY=your_app_key \
+  -e USER_KEY=your_user_key \
+  ais-data-forwarder:latest
+```
+
+**Mode Serial (perlu device mapping):**
+
+```bash
+docker run -d \
+  --name ais-forwarder \
+  --restart unless-stopped \
+  --device=/dev/ttyUSB0:/dev/ttyUSB0 \
+  -p 10111:10111 \
+  -e CONNECTION_MODE=serial \
+  -e SERIAL_PORT=/dev/ttyUSB0 \
+  -e SERIAL_BAUD_RATE=38400 \
+  -e WEBSOCKET_SERVER=ws://socket-ais.jasalog.com:8081 \
+  -e APP_KEY=your_app_key \
+  -e USER_KEY=your_user_key \
+  ais-data-forwarder:latest
+```
+
+#### 3. Menggunakan Docker Compose
+
+```bash
+# Copy template environment
+cp .env.docker .env
+
+# Edit file .env sesuai kebutuhan
+nano .env
+
+# Jalankan
+docker-compose up -d
+
+# Lihat logs
+docker-compose logs -f
+
+# Stop
+docker-compose down
+```
+
+### Environment Variables untuk Docker
+
+| Variable | Default | Deskripsi |
+|----------|---------|-----------|
+| `CONNECTION_MODE` | `tcp` | Mode koneksi: `serial`, `tcp`, `udp` |
+| `TCP_HOST` | `192.168.1.100` | IP AIS receiver (untuk mode TCP) |
+| `TCP_PORT` | `10110` | Port AIS receiver (untuk mode TCP) |
+| `UDP_HOST` | `192.168.1.100` | IP AIS receiver (untuk mode UDP) |
+| `UDP_PORT` | `10110` | Port AIS receiver (untuk mode UDP) |
+| `UDP_LISTEN_PORT` | `10110` | Port listen UDP |
+| `SERIAL_PORT` | `/dev/ttyUSB0` | Serial port device |
+| `SERIAL_BAUD_RATE` | `38400` | Serial baud rate |
+| `WEBSOCKET_SERVER` | `ws://socket-ais.jasalog.com:8081` | URL WebSocket server |
+| `DEBOUNCE_DELAY` | `100` | Delay debounce (ms) |
+| `FORWARDER_ENABLED` | `true` | Enable TCP forwarder |
+| `FORWARDER_HOST` | `0.0.0.0` | TCP forwarder listen IP |
+| `FORWARDER_PORT` | `10111` | TCP forwarder port |
+| `APP_KEY` | - | App key untuk identifikasi |
+| `USER_KEY` | - | User key untuk identifikasi |
+
+### Docker Commands
+
+```bash
+# Lihat status container
+docker ps
+
+# Lihat logs realtime
+docker logs -f ais-forwarder
+
+# Restart container
+docker restart ais-forwarder
+
+# Stop container
+docker stop ais-forwarder
+
+# Remove container
+docker rm ais-forwarder
+
+# Remove image
+docker rmi ais-data-forwarder:latest
+```
+
+### Push ke Docker Registry (Optional)
+
+Jika ingin menyimpan image di registry untuk distribusi:
+
+```bash
+# Tag image
+docker tag ais-data-forwarder:latest your-registry.com/ais-data-forwarder:latest
+
+# Push ke registry
+docker push your-registry.com/ais-data-forwarder:latest
+
+# Di komputer client, pull dan jalankan
+docker pull your-registry.com/ais-data-forwarder:latest
+docker run -d ... your-registry.com/ais-data-forwarder:latest
+```
+
+### Troubleshooting Docker
+
+#### Container tidak bisa connect ke AIS receiver
+
+1. Pastikan IP AIS receiver bisa diakses dari Docker host
+2. Jika menggunakan Docker Desktop, pastikan network mode benar
+3. Coba gunakan `--network host` untuk troubleshooting
+
+#### Serial port tidak bisa diakses
+
+1. Pastikan device path benar: `--device=/dev/ttyUSB0:/dev/ttyUSB0`
+2. Di Linux, user mungkin perlu masuk group `dialout`: `sudo usermod -aG dialout $USER`
+3. Cek permission device: `ls -la /dev/ttyUSB0`
+
+#### Logs tidak muncul
+
+```bash
+# Cek status container
+docker ps -a
+
+# Lihat logs error
+docker logs ais-forwarder
+```
+
 ## License
 
 ISC License

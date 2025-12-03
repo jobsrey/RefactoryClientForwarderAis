@@ -1,0 +1,92 @@
+# ============================================
+# AIS Data Forwarder - Docker Compose
+# ============================================
+# Cara penggunaan:
+#   1. Copy file .env.example ke .env dan sesuaikan nilai-nilainya
+#   2. Jalankan: docker-compose up -d
+#   3. Lihat logs: docker-compose logs -f
+#   4. Stop: docker-compose down
+
+version: '3.8'
+
+services:
+  ais-forwarder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ais-data-forwarder:latest
+    container_name: ais-forwarder
+    restart: unless-stopped
+    
+    # Environment variables (override di file .env atau di sini)
+    environment:
+      # Mode koneksi: 'serial', 'tcp', atau 'udp'
+      - CONNECTION_MODE=${CONNECTION_MODE:-tcp}
+      
+      # Konfigurasi Serial Port (jika CONNECTION_MODE=serial)
+      - SERIAL_PORT=${SERIAL_PORT:-/dev/ttyUSB0}
+      - SERIAL_BAUD_RATE=${SERIAL_BAUD_RATE:-38400}
+      - SERIAL_DATA_BITS=${SERIAL_DATA_BITS:-8}
+      - SERIAL_STOP_BITS=${SERIAL_STOP_BITS:-1}
+      - SERIAL_PARITY=${SERIAL_PARITY:-none}
+      
+      # Konfigurasi TCP/IP (jika CONNECTION_MODE=tcp)
+      - TCP_HOST=${TCP_HOST:-192.168.1.100}
+      - TCP_PORT=${TCP_PORT:-10110}
+      
+      # Konfigurasi UDP (jika CONNECTION_MODE=udp)
+      - UDP_HOST=${UDP_HOST:-192.168.1.100}
+      - UDP_PORT=${UDP_PORT:-10110}
+      - UDP_LISTEN_PORT=${UDP_LISTEN_PORT:-10110}
+      
+      # Konfigurasi WebSocket Server
+      - WEBSOCKET_SERVER=${WEBSOCKET_SERVER:-ws://socket-ais.jasalog.com:8081}
+      - DEBOUNCE_DELAY=${DEBOUNCE_DELAY:-100}
+      
+      # Konfigurasi TCP Forwarder (untuk OpenCPN)
+      - FORWARDER_ENABLED=${FORWARDER_ENABLED:-true}
+      - FORWARDER_HOST=${FORWARDER_HOST:-0.0.0.0}
+      - FORWARDER_PORT=${FORWARDER_PORT:-10111}
+      
+      # Identifikasi Device & User
+      - APP_KEY=${APP_KEY:-}
+      - USER_KEY=${USER_KEY:-}
+    
+    # Port mapping untuk TCP Forwarder (OpenCPN bisa connect ke port ini)
+    ports:
+      - "${FORWARDER_PORT:-10111}:10111"
+    
+    # Untuk mode UDP, perlu expose UDP port
+    # Uncomment jika menggunakan UDP mode
+    # - "${UDP_LISTEN_PORT:-10110}:10110/udp"
+    
+    # Network mode: host untuk akses serial port lebih mudah
+    # Uncomment jika menggunakan serial mode
+    # network_mode: host
+    
+    # Device mapping untuk serial port (jika CONNECTION_MODE=serial)
+    # Uncomment dan sesuaikan device path
+    # devices:
+    #   - "/dev/ttyUSB0:/dev/ttyUSB0"
+    #   - "/dev/ttyACM0:/dev/ttyACM0"
+    
+    # Volume untuk persistent data jika diperlukan
+    # volumes:
+    #   - ./data:/app/data
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# ============================================
+# Profile untuk mode koneksi berbeda
+# ============================================
+
+# Profile untuk TCP mode (default)
+# docker-compose --profile tcp up -d
+
+# Profile untuk Serial mode (dengan device mapping)
+# docker-compose --profile serial up -d

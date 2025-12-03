@@ -1,0 +1,49 @@
+# ============================================
+# Docker Ignore File
+# ============================================
+
+# Dependencies
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Environment files (tidak include untuk keamanan)
+.env
+.env.local
+.env.*.local
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation
+*.md
+!README.md
+
+# Docker files (tidak perlu di dalam image)
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Test files
+test
+tests
+*.test.js
+*.spec.js
+coverage
+
+# Temp files
+tmp
+temp
+*.tmp
+*.log
