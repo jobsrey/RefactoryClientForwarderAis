@@ -17,9 +17,10 @@ import {
   UDP_CONFIG, 
   WEBSOCKET_CONFIG,
   APP_CONFIG,
-  FORWARDER_CONFIG 
+  FORWARDER_CONFIG,
+  SENDER_CONFIG 
 } from './config.js';
-import { createConnection, WebSocketConnection, TCPForwarder } from './connections/index.js';
+import { createConnection, WebSocketConnection, TCPForwarder, TCPSender } from './connections/index.js';
 import { DataBuffer, AISProcessor } from './core/index.js';
 import { getMacAddress } from './utils/helpers.js';
 import logger from './utils/logger.js';
@@ -36,6 +37,7 @@ class AISDataForwarder {
     this.aisProcessor = null;
     this.statsInterval = null;
     this.tcpForwarder = null;
+    this.tcpSender = null;
   }
 
   /**
@@ -65,11 +67,18 @@ class AISDataForwarder {
     console.log(`WebSocket Server: ${WEBSOCKET_CONFIG.server}`);
     console.log(`Mode: Pengiriman segera saat data diterima (debounce: ${APP_CONFIG.debounceDelay}ms)`);
     
-    // TCP Forwarder info
+    // TCP Forwarder info (SERVER - menerima koneksi dari OpenCPN)
     if (FORWARDER_CONFIG.enabled) {
       console.log(`TCP Forwarder: ${FORWARDER_CONFIG.host}:${FORWARDER_CONFIG.port} (OpenCPN/Telnet)`);
     } else {
       console.log(`TCP Forwarder: DISABLED`);
+    }
+    
+    // TCP Sender info (CLIENT - forward ke remote server)
+    if (SENDER_CONFIG.enabled) {
+      console.log(`TCP Sender: -> ${SENDER_CONFIG.host}:${SENDER_CONFIG.port} (Forward to remote)`);
+    } else {
+      console.log(`TCP Sender: DISABLED`);
     }
     console.log('');
   }
@@ -205,6 +214,11 @@ class AISDataForwarder {
       this.tcpForwarder.stop();
     }
 
+    // Stop TCP Sender
+    if (this.tcpSender) {
+      this.tcpSender.stop();
+    }
+
     console.log('Terima kasih!\n');
     process.exit(0);
   }
@@ -223,13 +237,17 @@ class AISDataForwarder {
       // Setup WebSocket connection
       this._setupWebSocket();
 
-      // Setup TCP Forwarder untuk OpenCPN
+      // Setup TCP Forwarder untuk OpenCPN (SERVER - menerima koneksi)
       this.tcpForwarder = new TCPForwarder(FORWARDER_CONFIG);
       await this.tcpForwarder.start();
 
+      // Setup TCP Sender untuk forward ke remote server (CLIENT - mengirim data)
+      this.tcpSender = new TCPSender(SENDER_CONFIG);
+      await this.tcpSender.start();
+
       // Setup data buffer dan AIS processor
       this.dataBuffer = new DataBuffer(this.wsConnection, this.macAddress);
-      this.aisProcessor = new AISProcessor(this.dataBuffer, this.tcpForwarder);
+      this.aisProcessor = new AISProcessor(this.dataBuffer, this.tcpForwarder, this.tcpSender);
 
       // Setup AIS connection
       this._setupAISConnection();

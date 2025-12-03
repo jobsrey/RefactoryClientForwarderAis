@@ -77,13 +77,24 @@ export const APP_CONFIG = Object.freeze({
 });
 
 /**
- * Konfigurasi TCP Forwarder untuk OpenCPN/Telnet
+ * Konfigurasi TCP Forwarder untuk OpenCPN/Telnet (SERVER - menerima koneksi)
  * @type {Object}
  */
 export const FORWARDER_CONFIG = Object.freeze({
   enabled: process.env.FORWARDER_ENABLED === 'true',
   host: process.env.FORWARDER_HOST || '0.0.0.0',
   port: parseInt(process.env.FORWARDER_PORT) || 10111
+});
+
+/**
+ * Konfigurasi TCP Sender untuk forward data ke remote server (CLIENT - mengirim data)
+ * @type {Object}
+ */
+export const SENDER_CONFIG = Object.freeze({
+  enabled: process.env.SENDER_ENABLED === 'true',
+  host: process.env.SENDER_HOST || '127.0.0.1',
+  port: parseInt(process.env.SENDER_PORT) || 10110,
+  reconnectDelay: parseInt(process.env.SENDER_RECONNECT_DELAY) || 5000
 });
 
 /**
@@ -119,5 +130,6 @@ export default {
   WEBSOCKET_CONFIG,
   APP_CONFIG,
   FORWARDER_CONFIG,
+  SENDER_CONFIG,
   getSourceConfig
 };

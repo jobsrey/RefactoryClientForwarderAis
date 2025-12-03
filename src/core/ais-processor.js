@@ -19,14 +19,16 @@ import {
 export class AISProcessor {
   /**
    * @param {DataBuffer} dataBuffer - Instance data buffer
-   * @param {TCPForwarder} [tcpForwarder] - Optional TCP Forwarder untuk OpenCPN
+   * @param {TCPForwarder} [tcpForwarder] - Optional TCP Forwarder untuk OpenCPN (SERVER)
+   * @param {TCPSender} [tcpSender] - Optional TCP Sender untuk forward ke remote (CLIENT)
    */
-  constructor(dataBuffer, tcpForwarder = null) {
+  constructor(dataBuffer, tcpForwarder = null, tcpSender = null) {
     this.dataBuffer = dataBuffer;
     this.decoder = new AISDecoder();
     this.delayTracker = new DelayTracker();
     this.statistics = new Statistics();
     this.tcpForwarder = tcpForwarder;
+    this.tcpSender = tcpSender;
   }
 
   /**
@@ -63,9 +65,14 @@ export class AISProcessor {
     // Kirim ke buffer (akan di-forward ke WebSocket)
     const wsStatus = this.dataBuffer.add(decodedData, message);
 
-    // Forward raw NMEA ke TCP Forwarder (untuk OpenCPN)
+    // Forward raw NMEA ke TCP Forwarder (untuk OpenCPN - local clients)
     if (this.tcpForwarder) {
       this.tcpForwarder.forward(message);
+    }
+
+    // Forward raw NMEA ke TCP Sender (ke remote server)
+    if (this.tcpSender) {
+      this.tcpSender.send(message);
     }
 
     // Log ke console

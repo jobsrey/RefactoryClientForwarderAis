@@ -43,10 +43,16 @@ services:
       - WEBSOCKET_SERVER=${WEBSOCKET_SERVER:-ws://socket-ais.jasalog.com:8081}
       - DEBOUNCE_DELAY=${DEBOUNCE_DELAY:-100}
       
-      # Konfigurasi TCP Forwarder (untuk OpenCPN)
-      - FORWARDER_ENABLED=${FORWARDER_ENABLED:-true}
+      # Konfigurasi TCP Forwarder (untuk OpenCPN - SERVER lokal)
+      - FORWARDER_ENABLED=${FORWARDER_ENABLED:-false}
       - FORWARDER_HOST=${FORWARDER_HOST:-0.0.0.0}
       - FORWARDER_PORT=${FORWARDER_PORT:-10111}
+      
+      # Konfigurasi TCP Sender (forward ke remote server - CLIENT)
+      - SENDER_ENABLED=${SENDER_ENABLED:-true}
+      - SENDER_HOST=${SENDER_HOST:-127.0.0.1}
+      - SENDER_PORT=${SENDER_PORT:-10110}
+      - SENDER_RECONNECT_DELAY=${SENDER_RECONNECT_DELAY:-5000}
       
       # Identifikasi Device & User
       - APP_KEY=${APP_KEY:-}
