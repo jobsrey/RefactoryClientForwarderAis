@@ -1,0 +1,37 @@
+{
+  "name": "ais-data-forwarder",
+  "version": "1.0.0",
+  "description": "AIS Data Forwarder - Menerima data AIS dari Serial/TCP/UDP dan meneruskan ke WebSocket Server",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "start:legacy": "node client-serial-port.js",
+    "dev": "node --watch src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "ais",
+    "serial-port",
+    "tcp",
+    "udp",
+    "websocket",
+    "maritime",
+    "vessel-tracking"
+  ],
+  "dependencies": {
+    "@serialport/parser-readline": "^12.0.0",
+    "decoder-ais-jasalog": "^1.0.0",
+    "dotenv": "^16.6.1",
+    "macaddress": "^0.5.3",
+    "mongodb": "^7.0.0",
+    "net": "^1.0.2",
+    "serialport": "^12.0.0",
+    "ws": "^8.18.0"
+  },
+  "author": "WiWIT Project",
+  "license": "ISC",
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
