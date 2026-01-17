@@ -38,6 +38,8 @@ class AISDataForwarder {
     this.statsInterval = null;
     this.tcpForwarder = null;
     this.tcpSender = null;
+    this.deviceStatusInterval = null;
+    this.lastDeviceStatus = null;
   }
 
   /**
@@ -130,6 +132,8 @@ class AISDataForwarder {
 
     this.aisConnection.on('connected', () => {
       this.aisProcessor.start();
+      // Device (Serial/TCP/UDP) is now connected - send ONLINE status
+      this._sendDeviceStatus(true);
     });
 
     this.aisConnection.on('data', (message) => {
@@ -152,8 +156,68 @@ class AISDataForwarder {
    * @private
    */
   _handleAISDisconnect() {
+    // Device (Serial/TCP/UDP) disconnected - send OFFLINE status
+    this._sendDeviceStatus(false);
     this.aisConnection.disconnect();
     this.aisConnection.scheduleReconnect();
+  }
+
+  /**
+   * Send device connection status to WebSocket server
+   * Status is based on actual device connection (Serial/TCP/UDP), NOT WebSocket connection
+   * @param {boolean} isOnline - Whether the AIS device (Serial/TCP/UDP) is connected
+   * @private
+   */
+  _sendDeviceStatus(isOnline) {
+    if (!this.wsConnection || !this.wsConnection.isReady()) {
+      return;
+    }
+
+    // Only send if status changed or first time
+    if (this.lastDeviceStatus === isOnline) {
+      return;
+    }
+
+    this.lastDeviceStatus = isOnline;
+
+    const statusPayload = {
+      type: 'device_status',
+      app_key: APP_CONFIG.appKey,
+      user_key: APP_CONFIG.userKey,
+      mac_address: this.macAddress,
+      isOnline: isOnline,
+      connectionMode: CONNECTION_MODE,
+      timestamp: new Date().toISOString()
+    };
+
+    const success = this.wsConnection.send(statusPayload);
+    if (success) {
+      console.log(`📡 Device status sent: ${isOnline ? 'ONLINE' : 'OFFLINE'} (${CONNECTION_MODE})`);
+    }
+  }
+
+  /**
+   * Setup device status interval to periodically send status
+   * This ensures server knows the current device connection state
+   * @private
+   */
+  _setupDeviceStatusInterval() {
+    // Send initial status after WebSocket connects
+    setTimeout(() => {
+      // Check actual device connection status (Serial/TCP/UDP), not WebSocket
+      const deviceConnected = this.aisConnection?.isConnected || false;
+      this._sendDeviceStatus(deviceConnected);
+    }, 2000);
+
+    // Periodically check and send device status
+    this.deviceStatusInterval = setInterval(() => {
+      // Check actual device connection status (Serial/TCP/UDP), not WebSocket
+      const deviceConnected = this.aisConnection?.isConnected || false;
+      
+      // Force send status periodically to keep server updated
+      this.lastDeviceStatus = null; // Reset to force send
+      this._sendDeviceStatus(deviceConnected);
+    }, APP_CONFIG.deviceStatusInterval);
   }
 
   /**
@@ -191,10 +255,17 @@ class AISDataForwarder {
       this.aisProcessor.showStats(this.wsConnection?.isConnected || false);
     }
 
-    // Clear interval
+    // Clear intervals
     if (this.statsInterval) {
       clearInterval(this.statsInterval);
     }
+    if (this.deviceStatusInterval) {
+      clearInterval(this.deviceStatusInterval);
+    }
+
+    // Send offline status before shutdown (device disconnecting)
+    this.lastDeviceStatus = null;
+    this._sendDeviceStatus(false);
 
     // Disconnect semua koneksi
     if (this.aisConnection) {
@@ -254,6 +325,9 @@ class AISDataForwarder {
 
       // Setup statistik interval
       this._setupStatsInterval();
+
+      // Setup device status interval (tracks device connection, not WebSocket)
+      this._setupDeviceStatusInterval();
 
       // Setup signal handlers
       this._setupSignalHandlers();

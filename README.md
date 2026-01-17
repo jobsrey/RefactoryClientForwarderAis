@@ -152,6 +152,103 @@ npm run dev
 npm run start:legacy
 ```
 
+### Menjalankan dengan PM2 (Production - Recommended)
+
+PM2 adalah process manager untuk Node.js yang memungkinkan aplikasi berjalan di background, auto-restart saat crash, dan auto-start saat komputer restart.
+
+#### 1. Install PM2
+
+```bash
+# Install PM2 secara global
+npm install -g pm2
+```
+
+#### 2. Jalankan Aplikasi dengan PM2
+
+```bash
+# Start aplikasi dengan nama "ais-forwarder"
+pm2 start src/index.js --name "ais-forwarder"
+
+# Simpan konfigurasi PM2 (agar tidak hilang saat restart)
+pm2 save
+```
+
+#### 3. Setup Auto-Start saat Komputer Restart
+
+**Untuk Windows:**
+
+```bash
+# Install pm2-windows-startup
+npm install -g pm2-windows-startup
+
+# Setup auto-start
+pm2-startup install
+
+# Simpan konfigurasi aplikasi yang sedang berjalan
+pm2 save
+```
+
+**Untuk Linux/Mac:**
+
+```bash
+# Generate startup script
+pm2 startup
+
+# Jalankan command yang muncul (biasanya dengan sudo)
+# Contoh: sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u username --hp /home/username
+
+# Simpan konfigurasi aplikasi yang sedang berjalan
+pm2 save
+```
+
+#### 4. Perintah PM2 yang Berguna
+
+```bash
+# Lihat status semua aplikasi
+pm2 list
+
+# Lihat logs real-time
+pm2 logs ais-forwarder
+
+# Lihat logs 100 baris terakhir
+pm2 logs ais-forwarder --lines 100
+
+# Stop aplikasi
+pm2 stop ais-forwarder
+
+# Restart aplikasi
+pm2 restart ais-forwarder
+
+# Restart aplikasi saat file berubah (development)
+pm2 restart ais-forwarder --watch
+
+# Hapus aplikasi dari PM2
+pm2 delete ais-forwarder
+
+# Monitor resource usage (CPU, Memory)
+pm2 monit
+
+# Informasi detail aplikasi
+pm2 show ais-forwarder
+```
+
+#### 5. Update Konfigurasi (.env)
+
+Jika Anda mengubah file `.env`, restart aplikasi agar perubahan diterapkan:
+
+```bash
+pm2 restart ais-forwarder
+```
+
+#### Keuntungan Menggunakan PM2
+
+- ✅ **Auto-restart**: Aplikasi otomatis restart jika crash
+- ✅ **Auto-start**: Aplikasi otomatis start saat komputer restart
+- ✅ **Background process**: Aplikasi berjalan di background
+- ✅ **Logs management**: Logs tersimpan dan mudah diakses
+- ✅ **Resource monitoring**: Monitor CPU dan memory usage
+- ✅ **Zero-downtime reload**: Update aplikasi tanpa downtime
+
 ### Contoh Output
 
 ```

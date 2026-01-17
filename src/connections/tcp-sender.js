@@ -80,7 +80,12 @@ export class TCPSender {
       
       // CRITICAL: Disable Nagle's algorithm untuk real-time data
       this.client.setNoDelay(true);
-      this.client.setKeepAlive(true, 30000);
+      
+      // Keep-alive untuk deteksi koneksi mati (probe setiap 10 detik)
+      this.client.setKeepAlive(true, 10000);
+      
+      // PENTING: Tidak menggunakan setTimeout() karena akan menyebabkan
+      // disconnect saat idle - tidak cocok untuk koneksi real-time persistent
       
       console.log(`📤 [TCP Sender] ✅ Connected to ${this.host}:${this.port}`);
       
@@ -116,13 +121,22 @@ export class TCPSender {
       // Reconnect akan di-handle oleh 'close' event
     });
 
-    this.client.on('timeout', () => {
-      console.log(`📤 [TCP Sender] ⏰ Socket timeout, reconnecting...`);
-      this.client.destroy();
+    // CATATAN: Socket timeout DIHAPUS untuk koneksi real-time persistent
+    // setKeepAlive sudah cukup untuk mendeteksi koneksi mati
+    // Jika perlu timeout untuk initial connection, gunakan setTimeout manual
+    
+    // Timeout hanya untuk proses connect awal (15 detik)
+    const connectTimeout = setTimeout(() => {
+      if (!this.connected) {
+        console.log(`📤 [TCP Sender] ⏰ Connect timeout, retrying...`);
+        this.client.destroy();
+      }
+    }, 15000);
+    
+    // Clear timeout saat connected
+    this.client.once('connect', () => {
+      clearTimeout(connectTimeout);
     });
-
-    // Set timeout 30 detik
-    this.client.setTimeout(30000);
   }
 
   /**

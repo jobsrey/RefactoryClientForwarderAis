@@ -73,7 +73,8 @@ export const APP_CONFIG = Object.freeze({
   debounceDelay: parseInt(process.env.DEBOUNCE_DELAY) || 100,
   statsInterval: 30000,
   appKey: process.env.APP_KEY || '',
-  userKey: process.env.USER_KEY || ''
+  userKey: process.env.USER_KEY || '',
+  deviceStatusInterval: parseInt(process.env.DEVICE_STATUS_INTERVAL) || 10000
 });
 
 /**
